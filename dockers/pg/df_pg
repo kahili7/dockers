@@ -1,0 +1,31 @@
+FROM centos:7
+MAINTAINER a.goncharov@magelan.ru
+
+ENV PGVER="9.6"
+ENV PGDATA="/var/lib/pgsql/$PGVER/data"
+
+RUN yum install -y mc
+
+RUN yum -y install epel-release && \
+	rpm -ivh https://download.postgresql.org/pub/repos/yum/$PGVER/redhat/rhel-7-x86_64/pgdg-centos96-9.6-3.noarch.rpm && \
+	yum clean all
+	
+
+RUN yum -y install postgresql96-server && \
+	yum -y autoremove && \
+	yum clean metadata && \
+	yum clean all
+
+COPY ./scripts/docker-install.sh /
+COPY ./scripts/docker-entrypoint.sh /
+COPY ./pg_hba.conf     /tmp/
+COPY ./postgresql.conf /tmp/
+
+RUN chmod +x /docker-entrypoint.sh
+RUN chmod +x /docker-install.sh && \
+	chmod 700 $PGDATA
+	
+RUN /docker-install.sh
+
+EXPOSE 5432
+ENTRYPOINT ["/docker-entrypoint.sh"]

@@ -1,0 +1,100 @@
+FROM centos:7
+MAINTAINER a.goncharov@magelan.ru
+
+ENV MY_USER="php" \
+	MY_GROUP="php" \
+	MY_UID="1000" \
+	MY_GID="1000"
+	
+ENV MY_CFG_DIR_PHP_CUSTOM="/etc/php-custom.d"
+
+ENV MY_LOG_DIR="/var/log/php" \
+	MY_LOG_FILE_XDEBUG="/var/log/php/xdebug.log" \
+	MY_LOG_FILE_ACC="/var/log/php/www-access.log" \
+	MY_LOG_FILE_ERR="/var/log/php/www-error.log" \
+	MY_LOG_FILE_SLOW="/var/log/php/www-slow.log" \
+	MY_LOG_FILE_FPM_ERR="/var/log/php/php-fpm.err"
+	
+# -- install --
+RUN groupadd -g ${MY_GID} -r ${MY_GROUP} && \
+	adduser -u ${MY_UID} -m -s /bin/bash -g ${MY_GROUP} ${MY_USER}	
+	
+RUN yum install -y mc
+
+RUN yum -y install epel-release &&\
+	rpm -ivh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm && \
+	yum-config-manager --enable remi && \
+	yum-config-manager --disable remi-php55 && \
+	yum-config-manager --enable remi-php56 && \
+	yum-config-manager --disable remi-php70 && \
+	yum-config-manager --disable remi-php71 && \
+	yum clean all
+	
+RUN yum -y install \
+	php \
+	php-cli \
+	php-fpm \
+	\
+	php-bcmath \
+	php-common \
+	php-gd \
+	php-gmp \
+	php-imap \
+	php-intl \
+	php-ldap \
+	php-magickwand \
+	php-mbstring \
+	php-mcrypt \
+	php-opcache \
+	php-pdo \
+	php-pear \
+	php-pgsql \
+	php-pspell \
+	php-recode \
+	php-soap \
+	php-tidy \
+	php-xml \
+	php-xmlrpc \
+	\
+	php-pecl-apcu \
+	php-pecl-imagick \
+	php-pecl-memcache \
+	php-pecl-memcached \
+	php-pecl-uploadprogress \
+	php-pecl-xdebug \
+
+	nc \
+	htop && \
+	yum -y autoremove && \
+	yum clean metadata && \
+	yum clean all
+	
+# -- PS1 --
+RUN \
+	( \
+		echo "if [ -f /etc/bashrc ]; then"; \
+		echo "    . /etc/bashrc"; \
+		echo "fi"; \
+	) | tee /home/${MY_USER}/.bashrc /root/.bashrc && \
+	( \
+		echo "if [ -f ~/.bashrc ]; then"; \
+		echo "    . ~/.bashrc"; \
+		echo "fi"; \
+	) | tee /home/${MY_USER}/.bash_profile /root/.bash_profile && \
+	echo ". /etc/bash_profile" | tee -a /etc/bashrc
+	
+COPY ./scripts/docker-install.sh /
+COPY ./scripts/docker-entrypoint.sh /
+COPY ./scripts/bash-profile /etc/bash_profile
+
+RUN chmod +x /docker-install.sh
+RUN chmod +x /docker-entrypoint.sh
+
+RUN /docker-install.sh
+
+EXPOSE 9000
+
+VOLUME /var/log/php
+VOLUME /etc/php-custom.d
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

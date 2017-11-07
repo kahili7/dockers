@@ -1,0 +1,30 @@
+FROM centos:7
+MAINTAINER a.goncharov@magelan.ru
+
+RUN yum install -y mc
+	
+ENV nginxversion="1.10.3-1" \
+    os="centos" \
+    osversion="7"
+	
+RUN yum -y install wget openssl sed \
+	&& yum clean all \
+	&& wget http://nginx.org/packages/$os/$osversion/x86_64/RPMS/nginx-$nginxversion.el$osversion.ngx.x86_64.rpm \
+	&& rpm -iv nginx-$nginxversion.el$osversion.ngx.x86_64.rpm \
+	&& sed -i '1i daemon off;' /etc/nginx/nginx.conf
+
+COPY ./scripts/docker-install.sh /
+COPY ./scripts/docker-entrypoint.sh /
+
+RUN chmod +x /docker-install.sh
+RUN chmod +x /docker-entrypoint.sh
+
+RUN /docker-install.sh
+
+EXPOSE 80
+
+VOLUME /var/log/nginx
+
+USER apache
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
